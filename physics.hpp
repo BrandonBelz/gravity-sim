@@ -17,9 +17,10 @@ private:
 
 class SimObject {
 public:
-  SimObject(double mass, float radius, DVector2 position,
-            DVector2 velocity = {0.0, 0.0});
+  SimObject(uint64_t id, double mass, float radius, DVector2 position,
+            DVector2 velocity = DVector2(0.0, 0.0));
 
+  uint64_t get_id() const;
   double get_mass() const;
   float get_radius() const;
   DVector2 get_position() const;
@@ -29,6 +30,7 @@ public:
   void set_velocity(DVector2 velocity);
 
 private:
+  uint64_t object_id;
   double mass;
   float radius;
   DVector2 position;
