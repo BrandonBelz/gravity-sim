@@ -1,56 +1,56 @@
 #ifndef PHYSICS_H
 #define PHYSICS_H
 
-#include <utility>
+#include <cstdint>
 #include <vector>
 
 class DVector2 {
-  double x;
-  double y;
-
 public:
   DVector2(double x, double y);
   double get_x() const;
   double get_y() const;
+
+private:
+  double x;
+  double y;
+};
+
+class SimObject {
+public:
+  SimObject(double mass, float radius, DVector2 position,
+            DVector2 velocity = {0.0, 0.0});
+
+  double get_mass() const;
+  float get_radius() const;
+  DVector2 get_position() const;
+  DVector2 get_velocity() const;
+
+  void set_position(DVector2 position);
+  void set_velocity(DVector2 velocity);
+
+private:
+  double mass;
+  float radius;
+  DVector2 position;
+  DVector2 velocity;
 };
 
 class Simulation {
-  class SimObject {
-    double mass;
-    float radius;
-    DVector2 position;
-    DVector2 velocity;
-
-  public:
-    SimObject(double mass, float radius, DVector2 position, DVector2 velocity);
-    SimObject(double mass, float radius, DVector2 position);
-
-    double get_mass() const;
-    float get_radius() const;
-    DVector2 get_position() const;
-    DVector2 get_velocity() const;
-
-    void set_position(DVector2 position);
-    void set_velocity(DVector2 velocity);
-  };
-  std::vector<SimObject> objects;
-
 public:
   Simulation();
-  int add(double mass, float radius, DVector2 position);
-  std::pair<int, int> remove(int object_id);
+  uint64_t add(double mass, float radius, DVector2 position);
+  void remove(uint64_t object_id);
   void run(double delta_t);
+  const std::vector<SimObject> &get_objects() const;
 
-  DVector2 get_position(int object_id) const;
-  double get_mass(int object_id) const;
-  DVector2 get_velocity(int object_id) const;
-  float get_radius(int object_id) const;
-  const std::vector<DVector2> &get_positions() const;
+  void set_position(uint64_t object_id, DVector2 position);
+  void set_mass(uint64_t object_id, double mass);
+  void set_velocity(uint64_t object_id, DVector2 velocity);
+  void set_radius(uint64_t object_id, float radius);
 
-  void set_position(int object_id, DVector2 position);
-  void set_mass(int object_id, double mass);
-  void set_velocity(int object_id, DVector2 velocity);
-  void set_radius(int object_id, float radius);
+private:
+  std::vector<SimObject> objects;
+  uint64_t next_id;
 };
 
 #endif // !PHYSICS_H
