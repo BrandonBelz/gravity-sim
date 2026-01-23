@@ -39,6 +39,7 @@ public:
   Simulation();
   int add(double mass, float radius, DVector2 position);
   std::pair<int, int> remove(int object_id);
+  void run(double delta_t);
 
   DVector2 get_position(int object_id) const;
   double get_mass(int object_id) const;
