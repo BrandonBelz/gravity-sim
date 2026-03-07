@@ -6,90 +6,106 @@
 #include <tuple>
 #include <vector>
 
+extern const double GRAVITY_CONST;
+
 /**
  * A vector consisting of two doubles.
  */
 class DVector2 {
-public:
-  /**
-   * The constructor for the DVector2 class.
-   */
-  DVector2(double x, double y) : x(x), y(y) {}
-  DVector2() : x(0.0), y(0.0) {}
+  public:
+    /**
+     * The constructor for the DVector2 class.
+     */
+    DVector2(double x, double y) : x(x), y(y) {}
+    DVector2() : x(0.0), y(0.0) {}
 
-  /**
-   * Returns the x, or first, value in the vector
-   */
-  double get_x() const;
+    /**
+     * Returns the x, or first, value in the vector
+     */
+    double get_x() const;
 
-  /**
-   * Returns the y, or second, value in the vector
-   */
-  double get_y() const;
+    /**
+     * Returns the y, or second, value in the vector
+     */
+    double get_y() const;
 
-  /**
-   * Returns the magnitude of the vector
-   */
-  double magnitude() const;
+    /**
+     * Returns the magnitude of the vector
+     */
+    double magnitude() const;
 
-  friend DVector2 operator+(DVector2 left, const DVector2 &right);
+    friend DVector2 operator+(DVector2 left, const DVector2 &right);
 
-  friend DVector2 operator*(DVector2 left, double scalar);
+    DVector2& operator+=(const DVector2& other);
 
-  friend DVector2 operator*(double scalar, DVector2 right);
+    friend DVector2 operator-(DVector2 left, const DVector2 &right);
 
-  friend DVector2 operator/(DVector2 left, double scalar);
+    DVector2& operator-=(const DVector2& other);
 
-  friend bool operator==(DVector2 left, const DVector2 &right);
+    friend DVector2 operator*(DVector2 left, double scalar);
 
-private:
-  double x;
-  double y;
+    friend DVector2 operator*(double scalar, DVector2 right);
+
+    friend DVector2 operator/(DVector2 left, double scalar);
+
+    friend bool operator==(DVector2 left, const DVector2 &right);
+
+  private:
+    double x;
+    double y;
 };
 
 class RGB {
-public:
-  RGB(ushort red, ushort green, ushort blue);
-  const ushort get_red() const;
-  const ushort get_green() const;
-  const ushort get_blue() const;
+  public:
+    RGB(ushort red, ushort green, ushort blue);
+    const ushort get_red() const;
+    const ushort get_green() const;
+    const ushort get_blue() const;
 
-private:
-  const std::tuple<ushort, ushort, ushort> color;
+  private:
+    const std::tuple<ushort, ushort, ushort> color;
 };
 
 typedef struct {
-  double mass;
-  double radius;
-  DVector2 pos;
-  DVector2 vel;
-  RGB color;
+    double mass;
+    double radius;
+    DVector2 pos;
+    DVector2 vel;
+    RGB color;
 } PhysicalObject;
 
 class PhysicsStep {
-public:
-  virtual std::vector<DVector2>
-  compute(const std::vector<PhysicalObject> &objects) = 0;
+  public:
+    virtual std::vector<DVector2>
+    compute(const std::vector<PhysicalObject> &objects) = 0;
 };
 
 class GravityStrategy : public PhysicsStep {};
 
 class NoGravity : public GravityStrategy {
-  std::vector<DVector2>
-  compute(const std::vector<PhysicalObject> &objects) override;
+    std::vector<DVector2>
+    compute(const std::vector<PhysicalObject> &objects) override;
+};
+
+class RealGravity : public GravityStrategy {
+    std::vector<DVector2>
+    compute(const std::vector<PhysicalObject> &objects) override;
 };
 
 class PhysicsHandler {
-public:
-  PhysicsHandler();
-  PhysicsHandler(std::vector<PhysicalObject> objects);
-  const std::vector<PhysicalObject> &get_objects() const;
-  void step(double delta_t);
-  void setGravityStrat(std::unique_ptr<GravityStrategy> strat);
+  public:
+    PhysicsHandler(double stepSize);
+    PhysicsHandler(double stepSize, std::vector<PhysicalObject> objects);
+    const std::vector<PhysicalObject> &get_objects() const;
+    void step(double delta_t);
+    void setGravityStrat(std::unique_ptr<GravityStrategy> strat);
+    void setMaxStepSize(double stepSize);
+    double getMaxStepSize() const;
 
-private:
-  std::vector<PhysicalObject> objects;
-  std::unique_ptr<GravityStrategy> gravityStrat;
+  private:
+    std::vector<PhysicalObject> objects;
+    std::unique_ptr<GravityStrategy> gravityStrat;
+    double maxStepSize;
 };
 
 #endif // !PHYSICS_H

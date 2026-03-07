@@ -4,15 +4,18 @@
 #include <vector>
 
 int main(void) {
-  std::vector<PhysicalObject> objs;
-  objs.push_back((PhysicalObject){50.0, 20.0, DVector2(3.0, 3.0),
-                                  DVector2(20.0, -3.0), RGB(255, 255, 255)});
-  objs.push_back((PhysicalObject){50.0, 20.0, DVector2(40.0, -3.0),
-                                  DVector2(3.0, -20.0), RGB(0, 255, 0)});
+    std::vector<PhysicalObject> objs;
+    objs.push_back((PhysicalObject){5.972E24, 6371000.0, DVector2(0.0, 0.0),
+                                    DVector2(0.0, -0.0125), RGB(0, 0, 255)});
+    objs.push_back((PhysicalObject){7.348E22, 1737000.0, DVector2(384400000.0, 0.0),
+                                    DVector2(0.0, 1018.0), RGB(130, 130, 130)});
 
-  GraphicsHandler *window =
-      new RaylibHandler(std::make_unique<PhysicsHandler>(objs));
-  window->run();
-  delete window;
-  return 0;
+    auto physicsHandler = std::make_unique<PhysicsHandler>(1000.0, objs);
+    physicsHandler->setGravityStrat(std::make_unique<RealGravity>());
+    GraphicsHandler *window = new RaylibHandler(std::move(physicsHandler));
+    window->setZoom(0.000002);
+    window->setSpeed(80000.0);
+    window->run();
+    delete window;
+    return 0;
 }
