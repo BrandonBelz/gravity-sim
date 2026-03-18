@@ -9,11 +9,21 @@ typedef struct {
 } SpeedState;
 
 typedef struct {
+    int width;
+    int height;
+    float frameTime;
+} WindowState;
+
+void updateWindowState(WindowState &window) {
+    window.frameTime = GetFrameTime();
+    window.width = GetScreenWidth();
+    window.height = GetScreenHeight();
+}
+
+typedef struct {
     SpeedState speedState;
     Camera2D cam;
-    float frameTime;
-    int screenWidth;
-    int screenHeight;
+    WindowState window;
     const std::vector<PhysicalObject> &objects;
 } SimState;
 
@@ -66,53 +76,57 @@ void handleInput(SimState &state) {
     applySpeedChanges(state.speedState);
 }
 
+bool objectIsInView(const PhysicalObject &obj, const SimState &state) {
+    Rectangle objBox = {static_cast<float>(obj.pos.get_x() - obj.radius),
+                        static_cast<float>(obj.pos.get_y() - obj.radius),
+                        static_cast<float>(obj.radius * 2),
+                        static_cast<float>(obj.radius * 2)};
+    Vector2 topLeft = GetScreenToWorld2D({0, 0}, state.cam);
+    Vector2 botRight =
+        GetScreenToWorld2D({static_cast<float>(state.window.width),
+                            static_cast<float>(state.window.height)},
+                           state.cam);
+
+    Rectangle inView = {topLeft.x, topLeft.y, botRight.x - topLeft.x,
+                        botRight.y - topLeft.y};
+
+    return CheckCollisionRecs(inView, objBox);
+}
+
+Color rgbToColor(RGB rgb) {
+    return {(u_char)rgb.get_red(), (u_char)rgb.get_green(),
+            (u_char)rgb.get_blue(), 255};
+}
+
 void RaylibHandler::run() {
-    SimState state = {
-        {simSpeed, false}, (Camera2D){0},     0.0f,
-        GetScreenWidth(),  GetScreenHeight(), physicsHandler->get_objects()};
+    SimState state = {{simSpeed, false},
+                      (Camera2D){0},
+                      (WindowState){0, 0, 0.0},
+                      physicsHandler->get_objects()};
+    state.cam.zoom = zoom;
 
     InitWindow(1920, 1080, "Gravity!");
     SetWindowState(FLAG_WINDOW_RESIZABLE);
     SetTargetFPS(60);
 
-    state.cam.offset = {state.screenWidth / 2.0f, state.screenHeight / 2.0f};
-    state.cam.zoom = zoom;
-
     while (!WindowShouldClose()) {
-        state.frameTime = GetFrameTime();
-        state.screenWidth = GetScreenWidth();
-        state.screenHeight = GetScreenHeight();
-        state.cam.offset = {state.screenWidth / 2.0f,
-                            state.screenHeight / 2.0f};
+        updateWindowState(state.window);
+        state.cam.offset = {state.window.width / 2.0f,
+                            state.window.height / 2.0f};
 
         BeginDrawing();
         handleInput(state);
 
         if (!state.speedState.paused)
-            physicsHandler->step(state.frameTime * state.speedState.speed);
+            physicsHandler->step(state.window.frameTime *
+                                 state.speedState.speed);
         ClearBackground(BLACK);
         BeginMode2D(state.cam);
 
-        Vector2 topLeft = GetScreenToWorld2D({0, 0}, state.cam);
-        Vector2 botRight =
-            GetScreenToWorld2D({static_cast<float>(state.screenWidth),
-                                static_cast<float>(state.screenHeight)},
-                               state.cam);
-
-        Rectangle inView = {topLeft.x, topLeft.y, botRight.x - topLeft.x,
-                            botRight.y - topLeft.y};
-
         for (PhysicalObject obj : state.objects) {
-            Rectangle objBox = {
-                static_cast<float>(obj.pos.get_x() - obj.radius),
-                static_cast<float>(obj.pos.get_y() - obj.radius),
-                static_cast<float>(obj.radius * 2),
-                static_cast<float>(obj.radius * 2)};
-            if (CheckCollisionRecs(inView, objBox)) {
-                Color color = {(u_char)obj.color.get_red(),
-                               (u_char)obj.color.get_green(),
-                               (u_char)obj.color.get_blue(), 255};
-                DrawCircle(obj.pos.get_x(), obj.pos.get_y(), obj.radius, color);
+            if (objectIsInView(obj, state)) {
+                DrawCircle(obj.pos.get_x(), obj.pos.get_y(), obj.radius,
+                           rgbToColor(obj.color));
             }
         }
 
