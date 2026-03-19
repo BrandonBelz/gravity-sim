@@ -1,7 +1,5 @@
 #include "raylib_wrap.hpp"
-#include "physics.hpp"
 #include "raylib.h"
-#include <vector>
 
 typedef struct {
     double speed;
@@ -23,26 +21,40 @@ void updateWindowState(WindowState &window) {
 typedef struct {
     SpeedState speedState;
     Camera2D cam;
+    int selectedObjectIndex;
     WindowState window;
     const std::vector<PhysicalObject> &objects;
 } SimState;
 
-void applyCamMove(Camera2D &cam) {
-    Vector2 target_change = {0.0f, 0.0f};
-    if (IsKeyDown(KEY_UP) || IsKeyDown(KEY_W)) {
-        target_change.y -= 10.0f;
+Vector2 dVector2ToVector2(DVector2 vec) {
+    Vector2 newVec = {static_cast<float>(vec.get_x()),
+                      static_cast<float>(vec.get_y())};
+    return newVec;
+}
+
+void applyCamTarget(SimState &simState) {
+    Camera2D &cam = simState.cam;
+    if (simState.selectedObjectIndex < 0) {
+        Vector2 target_change = {0.0f, 0.0f};
+        if (IsKeyDown(KEY_UP) || IsKeyDown(KEY_W)) {
+            target_change.y -= 10.0f;
+        }
+        if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S)) {
+            target_change.y += 10.0f;
+        }
+        if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) {
+            target_change.x += 10.0f;
+        }
+        if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) {
+            target_change.x -= 10.0f;
+        }
+        cam.target.x += target_change.x / cam.zoom;
+        cam.target.y += target_change.y / cam.zoom;
+    } else {
+        DVector2 targetPos = simState.objects[simState.selectedObjectIndex].pos;
+        cam.target.x = targetPos.get_x();
+        cam.target.y = targetPos.get_y();
     }
-    if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S)) {
-        target_change.y += 10.0f;
-    }
-    if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) {
-        target_change.x += 10.0f;
-    }
-    if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) {
-        target_change.x -= 10.0f;
-    }
-    cam.target.x += target_change.x / cam.zoom;
-    cam.target.y += target_change.y / cam.zoom;
 }
 
 void applyCamZoom(Camera2D &cam) {
@@ -70,8 +82,36 @@ void applySpeedChanges(SpeedState &speedState) {
     }
 }
 
+int selectObject(const SimState &state) {
+    if (IsKeyPressed(KEY_ESCAPE)) {
+        return -1;
+    } else if (!IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        return state.selectedObjectIndex;
+    }
+    bool found = false;
+    double smallestRadius;
+    int smallestObjectIndex;
+    for (size_t i = 0; i < state.objects.size(); i++) {
+        PhysicalObject obj = state.objects[i];
+        Vector2 clickPosition =
+            GetScreenToWorld2D(GetMousePosition(), state.cam);
+        if (CheckCollisionPointCircle(clickPosition, dVector2ToVector2(obj.pos),
+                                      obj.radius) &&
+            (!found || obj.radius < smallestRadius)) {
+            found = true;
+            smallestRadius = obj.radius;
+            smallestObjectIndex = i;
+        }
+    }
+    if (!found) {
+        return -1;
+    }
+    return smallestObjectIndex;
+}
+
 void handleInput(SimState &state) {
-    applyCamMove(state.cam);
+    state.selectedObjectIndex = selectObject(state);
+    applyCamTarget(state);
     applyCamZoom(state.cam);
     applySpeedChanges(state.speedState);
 }
@@ -101,25 +141,27 @@ Color rgbToColor(RGB rgb) {
 void RaylibHandler::run() {
     SimState state = {{simSpeed, false},
                       (Camera2D){0},
+                      -1,
                       (WindowState){0, 0, 0.0},
                       physicsHandler->get_objects()};
     state.cam.zoom = zoom;
 
     InitWindow(1920, 1080, "Gravity!");
     SetWindowState(FLAG_WINDOW_RESIZABLE);
+    SetExitKey(KEY_NULL);
     SetTargetFPS(60);
 
     while (!WindowShouldClose()) {
         updateWindowState(state.window);
         state.cam.offset = {state.window.width / 2.0f,
                             state.window.height / 2.0f};
+        if (!state.speedState.paused)
+            physicsHandler->step(state.window.frameTime *
+                                 state.speedState.speed);
 
         BeginDrawing();
         handleInput(state);
 
-        if (!state.speedState.paused)
-            physicsHandler->step(state.window.frameTime *
-                                 state.speedState.speed);
         ClearBackground(BLACK);
         BeginMode2D(state.cam);
 
